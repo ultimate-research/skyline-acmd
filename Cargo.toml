@@ -1,0 +1,16 @@
+[package]
+name = "acmd"
+version = "0.1.0"
+authors = ["jam1garner <8260240+jam1garner@users.noreply.github.com>"]
+edition = "2018"
+
+[package.metadata.skyline]
+plugin-dependencies = [
+    { name = "libnro_hook.nro", url = "https://github.com/ultimate-research/nro-hook-plugin/releases/download/v0.1.0/libnro_hook.nro" },
+    { name = "libacmd_hook.nro", url = "https://github.com/ultimate-research/acmd_hook/releases/download/v0.1.0/libacmd_hook.nro" }
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+skyline_smash = { git = "https://github.com/ultimate-research/skyline-smash.git" }
