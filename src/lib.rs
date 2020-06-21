@@ -5,7 +5,7 @@ pub use acmd_proc_macros::*;
         $l2c_state:expr,
         {
             $(
-                $func_name:ident(
+                $($func_name:ident)::*(
                     $($args:tt)*
                 );
             )*
@@ -15,7 +15,7 @@ pub use acmd_proc_macros::*;
         let lua_state = $l2c_state;
 
         $(
-            acmd::single_acmd_func!($func_name ($($args)*));
+            acmd::single_acmd_func!($($func_name)::* ($($args)*));
         )*
     };
 }

@@ -70,7 +70,15 @@ pub fn single_acmd_func(input: TokenStream) -> TokenStream {
     } else if func_call.name.segments.iter().next().unwrap().ident
                     .to_string().starts_with("sv_") {
         // Lua calling convention
-        todo!()
+        let func_name = func_call.name;
+        let args = func_call.args.iter().map(|arg| arg.expr.clone());
+        quote!(
+            l2c_agent.clear_lua_stack();
+            #(
+                l2c_agent.push_lua_stack(&mut (#args).into());
+            )*
+            ::smash::app::#func_name(lua_state);
+        ).into()
     } else {
         // Module functions
         todo!()
