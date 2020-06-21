@@ -14,3 +14,4 @@ plugin-dependencies = [
 
 [dependencies]
 skyline_smash = { git = "https://github.com/ultimate-research/skyline-smash.git" }
+acmd_proc_macros = { path = "acmd_proc_macros" }
