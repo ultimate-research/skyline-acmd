@@ -112,7 +112,7 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
 
     if let Expr::Path(path) = expr {
         let path = path.path;
-        if path.is_ident("is_execute") {
+        if path.is_ident("is_execute") || path.is_ident("is_excute") {
             return quote!(
                 let #path = target_frame == current_frame;
             ).into();
