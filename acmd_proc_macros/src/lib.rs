@@ -130,6 +130,7 @@ mod kw {
     syn::custom_keyword!(battle_object_category);
     syn::custom_keyword!(battle_object_kind);
     syn::custom_keyword!(animation);
+    syn::custom_keyword!(animcmd);
 }
 
 struct AcmdBlock {
@@ -292,20 +293,22 @@ pub fn acmd(input: TokenStream) -> TokenStream {
 struct AcmdAttrs {
     pub battle_object_category: Option<syn::Path>,
     pub battle_object_kind: Option<syn::Path>,
-    pub animation: Option<syn::LitStr>
+    pub animation: Option<syn::LitStr>,
+    pub animcmd: Option<syn::LitStr>
 }
 
 fn merge(attr1: AcmdAttrs, attr2: AcmdAttrs) -> AcmdAttrs {
     let (
-        AcmdAttrs { battle_object_category: c1, battle_object_kind: k1, animation: a1},
-        AcmdAttrs { battle_object_category: c2, battle_object_kind: k2, animation: a2},
+        AcmdAttrs { battle_object_category: c1, battle_object_kind: k1, animation: a1, animcmd: ac1},
+        AcmdAttrs { battle_object_category: c2, battle_object_kind: k2, animation: a2, animcmd: ac2},
     ) = (attr1, attr2);
 
 
     AcmdAttrs {
         battle_object_category: c1.or(c2),
         battle_object_kind: k1.or(k2),
-        animation: a1.or(a2)
+        animation: a1.or(a2),
+        animcmd: ac1.or(ac2)
     }
 }
 
@@ -329,6 +332,12 @@ impl Parse for AcmdAttrs {
             
             let mut a = AcmdAttrs::default();
             a.animation = Some(anim);
+            a
+        } else if look.peek(kw::animcmd) {
+            let MetaItem::<kw::animcmd, syn::LitStr> { item: animcmd, .. } = input.parse()?;
+            
+            let mut a = AcmdAttrs::default();
+            a.animcmd = Some(animcmd);
             a
         } else {
             return Err(look.error());
@@ -382,6 +391,7 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let _category = attrs.battle_object_category.unwrap();
     let _kind = attrs.battle_object_kind.unwrap();
     let _animation = attrs.animation.unwrap();
+    let _animcmd = attrs.animcmd.unwrap();
 
     let _orig_fn = mod_fn.block.to_token_stream();
 
@@ -396,8 +406,8 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let conditional_wrap: Stmt = parse_quote! {
         unsafe {
             if smash::app::utility::get_category(module_accessor) == #_category 
-                && smash::app::utility::get_kind(module_accessor) == #_kind { //check for the current battle object being a fighter, and being mario
-                if smash::app::lua_bind::MotionModule::motion_kind(module_accessor) == smash::hash40(#_animation) { //check for forward aerial
+                && smash::app::utility::get_kind(module_accessor) == #_kind {
+                if smash::app::lua_bind::MotionModule::motion_kind(module_accessor) == smash::hash40(#_animation) {
                     #_orig_fn
                 }
             }
@@ -410,6 +420,22 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     mod_fn.block.stmts.push(conditional_wrap);
 
     mod_fn.to_tokens(&mut output);
+
+    let _pred_fn = quote::format_ident!(
+        "{}_skyline_acmd_internal_predicate_fn",
+        mod_fn.sig.ident
+    );
+
+    quote!(        
+        #[allow(non_upper_case_globals)]
+        pub unsafe fn #_pred_fn(agent: &mut smash::lua2cpp::L2CAgentBase, hash: smash::phx::Hash40) -> bool {
+            let module_accessor = smash::app::sv_system::battle_object_module_accessor(agent.lua_state_agent);
+            return 
+                hash.hash == smash::hash40(#_animcmd) &&
+                smash::app::utility::get_category(module_accessor) == #_category &&
+                smash::app::utility::get_kind(module_accessor) == #_kind;
+        }
+    ).to_tokens(&mut output);
 
     output.into()
 }
