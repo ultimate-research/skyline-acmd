@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::{Ident, Path, Expr, Token};
+use syn::{Ident, Path, Expr, token, Token, Stmt, parse_quote, parse_macro_input, parenthesized};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -126,6 +126,10 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
 
 mod kw {
     syn::custom_keyword!(rust);
+    syn::custom_keyword!(name);
+    syn::custom_keyword!(battle_object_category);
+    syn::custom_keyword!(battle_object_kind);
+    syn::custom_keyword!(animation);
 }
 
 struct AcmdBlock {
@@ -282,4 +286,130 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             #acmd_stmts
         )*
     ).into()
+}
+
+#[derive(Default)]
+struct AcmdAttrs {
+    pub battle_object_category: Option<syn::Path>,
+    pub battle_object_kind: Option<syn::Path>,
+    pub animation: Option<syn::LitStr>
+}
+
+fn merge(attr1: AcmdAttrs, attr2: AcmdAttrs) -> AcmdAttrs {
+    let (
+        AcmdAttrs { battle_object_category: c1, battle_object_kind: k1, animation: a1},
+        AcmdAttrs { battle_object_category: c2, battle_object_kind: k2, animation: a2},
+    ) = (attr1, attr2);
+
+
+    AcmdAttrs {
+        battle_object_category: c1.or(c2),
+        battle_object_kind: k1.or(k2),
+        animation: a1.or(a2)
+    }
+}
+
+impl Parse for AcmdAttrs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let look = input.lookahead1();
+        let attr = if look.peek(kw::battle_object_category) {
+            let MetaItem::<kw::battle_object_category, syn::Path> { item: cat, .. } = input.parse()?;
+            
+            let mut a = AcmdAttrs::default();
+            a.battle_object_category = Some(cat);
+            a
+        } else if look.peek(kw::battle_object_kind) {
+            let MetaItem::<kw::battle_object_kind, syn::Path> { item: kind, .. } = input.parse()?;
+            
+            let mut a = AcmdAttrs::default();
+            a.battle_object_kind = Some(kind);
+            a
+        } else if look.peek(kw::animation) {
+            let MetaItem::<kw::animation, syn::LitStr> { item: anim, .. } = input.parse()?;
+            
+            let mut a = AcmdAttrs::default();
+            a.animation = Some(anim);
+            a
+        } else {
+            return Err(look.error());
+        };
+
+        Ok(if input.peek(Token![,]) {
+            let _: Token![,] = input.parse()?;
+            if input.is_empty() {
+                attr
+            } else {
+                merge(attr, input.parse()?)
+            }
+        } else {
+            attr
+        })
+    }
+}
+
+
+#[derive(Debug, Clone)]
+struct MetaItem<Keyword: Parse, Item: Parse> {
+    pub ident: Keyword,
+    pub item: Item,
+}
+
+impl<Keyword: Parse, Item: Parse> Parse for MetaItem<Keyword, Item> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let ident = input.parse()?;
+        let item = if input.peek(token::Paren) {
+            let content;
+            parenthesized!(content in input);
+            content.parse()?
+        } else {
+            input.parse::<Token![=]>()?;
+            input.parse()?
+        };
+
+        Ok(Self {
+            ident,
+            item
+        })
+    }
+}
+
+#[proc_macro_attribute]
+pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let mut mod_fn = parse_macro_input!(input as syn::ItemFn);
+    let attrs = parse_macro_input!(attrs as AcmdAttrs);
+    let mut output = TokenStream2::new();
+
+    let _category = attrs.battle_object_category.unwrap();
+    let _kind = attrs.battle_object_kind.unwrap();
+    let _animation = attrs.animation.unwrap();
+
+    let _orig_fn = mod_fn.block.to_token_stream();
+
+    let lua_state_defn: Stmt = parse_quote! {
+        let lua_state = fighter.lua_state_agent;
+    };
+
+    let module_accessor_defn: Stmt = parse_quote! {
+        let module_accessor = unsafe { smash::app::sv_system::battle_object_module_accessor(lua_state) }; 
+    };
+
+    let conditional_wrap: Stmt = parse_quote! {
+        unsafe {
+            if get_category(module_accessor) == #_category 
+                && get_kind(module_accessor) == #_kind { //check for the current battle object being a fighter, and being mario
+                if app::lua_bind::MotionModule::motion_kind(module_accessor) == hash40(#_animation) { //check for forward aerial
+                    #_orig_fn
+                }
+            }
+        }
+    };
+
+    mod_fn.block.stmts.clear();
+    mod_fn.block.stmts.push(lua_state_defn);
+    mod_fn.block.stmts.push(module_accessor_defn);
+    mod_fn.block.stmts.push(conditional_wrap);
+
+    mod_fn.to_tokens(&mut output);
+
+    output.into()
 }
