@@ -395,9 +395,9 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
     let conditional_wrap: Stmt = parse_quote! {
         unsafe {
-            if get_category(module_accessor) == #_category 
-                && get_kind(module_accessor) == #_kind { //check for the current battle object being a fighter, and being mario
-                if app::lua_bind::MotionModule::motion_kind(module_accessor) == hash40(#_animation) { //check for forward aerial
+            if smash::app::utility::get_category(module_accessor) == #_category 
+                && smash::app::utility::get_kind(module_accessor) == #_kind { //check for the current battle object being a fighter, and being mario
+                if smash::app::lua_bind::MotionModule::motion_kind(module_accessor) == smash::hash40(#_animation) { //check for forward aerial
                     #_orig_fn
                 }
             }
