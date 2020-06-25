@@ -408,7 +408,12 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
             if smash::app::utility::get_category(module_accessor) == #_category 
                 && smash::app::utility::get_kind(module_accessor) == #_kind {
                 if smash::app::lua_bind::MotionModule::motion_kind(module_accessor) == smash::hash40(#_animation) {
-                    #_orig_fn
+                    use ::acmd::acmd;
+                    ::acmd::acmd!(lua_state, {
+                        rust {
+                            #_orig_fn
+                        }
+                    });
                 }
             }
         }
@@ -438,4 +443,17 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     ).to_tokens(&mut output);
 
     output.into()
+}
+
+#[proc_macro]
+pub fn add_hook(input: TokenStream) -> TokenStream {
+    let ident = syn::parse_macro_input!(input as Ident);
+
+    let pred_fn = quote::format_ident!("{}_skyline_acmd_internal_predicate_fn", ident);
+
+    quote!(
+        unsafe {
+            acmd::add_acmd_load_hook(#ident, #pred_fn);
+        }
+    ).into()
 }
