@@ -56,4 +56,4 @@ acmd!(lua_state, {
 
 });
 ```
-To get a better idea of the context in which to use this macro, see [the full example](https://gist.github.com/jam1garner/d3fc2a3eabee07349038f3b03957a0b9).
+To get a better idea of the context in which to use this macro, see [the full example](https://gist.github.com/jugeeya/27b902865408c916b1fcacc486157f79).
