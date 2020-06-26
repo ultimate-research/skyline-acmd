@@ -100,7 +100,12 @@ fn single_acmd_func(func_call: &AcmdFuncCall) -> TokenStream2 {
         let func_name = &func_call.name;
         let args = func_call.args.iter().map(|arg| arg.expr.clone());
         quote!(
-            ::smash::app::lua_bind::#func_name(module_accessor, #(#args),*);
+            ::smash::app::lua_bind::#func_name(
+                module_accessor,
+                #(
+                    (#args).into()
+                ),*
+            );
         )
     }
 }
