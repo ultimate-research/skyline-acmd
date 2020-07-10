@@ -136,6 +136,7 @@ mod kw {
     syn::custom_keyword!(battle_object_kind);
     syn::custom_keyword!(animation);
     syn::custom_keyword!(animcmd);
+    syn::custom_keyword!(Iterations);
 }
 
 struct AcmdBlock {
@@ -184,6 +185,27 @@ impl Parse for AcmdIf {
     }
 }
 
+struct AcmdFor {
+    pub for_token: Token![for],
+    pub parens: syn::token::Paren,
+    pub iter_count: Expr,
+    pub iter_keyword: kw::Iterations,
+    pub block: AcmdBlock
+}
+
+impl Parse for AcmdFor {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        Ok(Self {
+            for_token: input.parse()?,
+            parens: syn::parenthesized!(content in input),
+            iter_count: content.parse()?,
+            iter_keyword: content.parse()?,
+            block: input.parse()?
+        })
+    }
+}
+
 struct InlineRustBlock {
     pub rust_token: kw::rust,
     pub block: syn::Block
@@ -200,6 +222,7 @@ impl Parse for InlineRustBlock {
 
 enum AcmdStatement {
     If(AcmdIf),
+    For(AcmdFor),
     FuncCall(AcmdFuncCall),
     RustBlock(InlineRustBlock),
 }
@@ -209,6 +232,8 @@ impl Parse for AcmdStatement {
         let lookahead = input.lookahead1();
         if lookahead.peek(Token![if]) {
             Ok(Self::If(input.parse()?))
+        } else if lookahead.peek(Token![for]) {
+            Ok(Self::For(input.parse()?))
         } else if lookahead.peek(kw::rust) {
             Ok(Self::RustBlock(input.parse()?))
         } else {
@@ -226,6 +251,15 @@ impl ToTokens for AcmdStatement {
                 quote!(
                     ::acmd::generate_acmd_is_execute!(#cond);
                     if #cond {
+                        #acmd_block
+                    }
+                )
+            }
+            Self::For(acmd_for) => {
+                let iter_count = &acmd_for.iter_count;
+                let acmd_block = &acmd_for.block;
+                quote!(
+                    for _ in (0..#iter_count) {
                         #acmd_block
                     }
                 )
