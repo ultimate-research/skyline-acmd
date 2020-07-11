@@ -120,8 +120,6 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
                 }
                 let #path = current_frame >= target_frame && last_excute_frame < target_frame;
                 if #path {
-                    println!("Current Frame: {}, Target Frame: {}, Last Frame: {}", 
-                        current_frame, target_frame, last_excute_frame);
                     globals[#LAST_FRAME_GLOBAL] = target_frame.into();
                 }
 
