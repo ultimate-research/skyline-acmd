@@ -316,7 +316,7 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             let lua_state = #l2c_state;
             let module_accessor = ::smash::app::sv_system::battle_object_module_accessor(lua_state);
             let mut target_frame = 0.0;
-            let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 2.0;
+            let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 1.0;
             let globals = fighter.globals_mut();
         )
     });
@@ -497,6 +497,19 @@ pub fn add_hook(input: TokenStream) -> TokenStream {
     quote!(
         unsafe {
             acmd::add_acmd_load_hook(#ident, #pred_fn);
+        }
+    ).into()
+}
+
+#[proc_macro]
+pub fn add_weapon_hook(input: TokenStream) -> TokenStream {
+    let ident = syn::parse_macro_input!(input as Ident);
+
+    let pred_fn = quote::format_ident!("{}_skyline_acmd_internal_predicate_fn", ident);
+
+    quote!(
+        unsafe {
+            acmd::add_acmd_load_weapon_hook(#ident, #pred_fn);
         }
     ).into()
 }
