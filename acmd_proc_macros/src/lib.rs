@@ -58,19 +58,13 @@ fn single_acmd_func(func_call: &AcmdFuncCall) -> TokenStream2 {
         // frame
         let arg = &func_call.args.iter().nth(0).expect("Missing argument in frame call").expr;
         quote!(
-            target_frame = #arg;
-            if target_frame > current_frame {
-                return;
-            }
+            target_frame = #arg as f32;
         )
     } else if func_call.name.is_ident("wait") {
         //wait
         let arg = &func_call.args.iter().nth(0).expect("Missing argument in wait call").expr;
         quote!(
-            target_frame += #arg;
-            if target_frame > current_frame {
-                return;
-            }
+            target_frame += #arg as f32;
         )
     } else if func_call.name.get_ident().is_some() {
         // ACMD functions
@@ -110,6 +104,7 @@ fn single_acmd_func(func_call: &AcmdFuncCall) -> TokenStream2 {
     }
 }
 
+const LAST_FRAME_GLOBAL : &str = "last_excute_frame";
 
 #[proc_macro]
 pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
@@ -119,7 +114,17 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
         let path = path.path;
         if path.is_ident("is_execute") || path.is_ident("is_excute") {
             return quote!(
-                let #path = target_frame == current_frame;
+                let last_excute_frame = globals[#LAST_FRAME_GLOBAL].try_get_num().unwrap_or(0.0);
+                if last_excute_frame > current_frame {
+                    globals[#LAST_FRAME_GLOBAL] = 0.0.into();
+                }
+                let #path = current_frame >= target_frame && last_excute_frame < target_frame;
+                if #path {
+                    println!("Current Frame: {}, Target Frame: {}, Last Frame: {}", 
+                        current_frame, target_frame, last_excute_frame);
+                    globals[#LAST_FRAME_GLOBAL] = target_frame.into();
+                }
+
             ).into();
         }
     }
@@ -312,8 +317,9 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             let l2c_agent = &mut ::smash::lib::L2CAgent::new(#l2c_state);
             let lua_state = #l2c_state;
             let module_accessor = ::smash::app::sv_system::battle_object_module_accessor(lua_state);
-            let mut target_frame = 0;
-            let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor).round() as i32;
+            let mut target_frame = 0.0;
+            let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 2.0;
+            let globals = fighter.globals_mut();
         )
     });
 
