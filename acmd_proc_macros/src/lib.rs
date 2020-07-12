@@ -437,6 +437,7 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let _animcmd = attrs.animcmd.unwrap();
 
     let _orig_fn = mod_fn.block.to_token_stream();
+    let _orig_fn_name = &mod_fn.sig.ident;
 
     let lua_state_defn: Stmt = parse_quote! {
         let lua_state = fighter.lua_state_agent;
@@ -485,6 +486,27 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
         }
     ).to_tokens(&mut output);
 
+    let _add_hook_fn = quote::format_ident!(
+        "{}_skyline_acmd_internal_add_hook_fn",
+        _orig_fn_name
+    );
+
+    if _category.to_token_stream().to_string() == "BATTLE_OBJECT_CATEGORY_FIGHTER" {
+        quote!(        
+            #[allow(non_upper_case_globals)]
+            pub unsafe fn #_add_hook_fn() {
+                acmd::add_acmd_load_hook(#_orig_fn_name, #_pred_fn);
+            }
+        ).to_tokens(&mut output);
+    } else {
+        quote!(        
+            #[allow(non_upper_case_globals)]
+            pub unsafe fn #_add_hook_fn()  {
+                acmd::add_acmd_load_weapon_hook(#_orig_fn_name, #_pred_fn);
+            }
+        ).to_tokens(&mut output);
+    }
+
     output.into()
 }
 
@@ -492,24 +514,11 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
 pub fn add_hook(input: TokenStream) -> TokenStream {
     let ident = syn::parse_macro_input!(input as Ident);
 
-    let pred_fn = quote::format_ident!("{}_skyline_acmd_internal_predicate_fn", ident);
+    let add_hook_fn = quote::format_ident!("{}_skyline_acmd_internal_add_hook_fn", ident);
 
     quote!(
         unsafe {
-            acmd::add_acmd_load_hook(#ident, #pred_fn);
-        }
-    ).into()
-}
-
-#[proc_macro]
-pub fn add_weapon_hook(input: TokenStream) -> TokenStream {
-    let ident = syn::parse_macro_input!(input as Ident);
-
-    let pred_fn = quote::format_ident!("{}_skyline_acmd_internal_predicate_fn", ident);
-
-    quote!(
-        unsafe {
-            acmd::add_acmd_load_weapon_hook(#ident, #pred_fn);
+            #add_hook_fn();
         }
     ).into()
 }

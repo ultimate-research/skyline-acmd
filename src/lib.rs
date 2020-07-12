@@ -16,14 +16,6 @@ type Predicate = unsafe fn(&mut L2CAgentBase, Hash40) -> bool;
     };
 }
 
-#[macro_export] macro_rules! add_weapon_hooks {
-    ($($hook:ident),* $(,)?) => {
-        $(
-            $crate::add_weapon_hook!($hook);
-        )*
-    };
-}
-
 extern "Rust" {
     pub fn add_acmd_load_hook(callback: Callback, predicate: Predicate);
     pub fn add_acmd_load_weapon_hook(callback: WeaponCallback, predicate: Predicate);
