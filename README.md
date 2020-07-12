@@ -25,7 +25,7 @@ acmd = { git = "https://github.com/ultimate-research/skyline-acmd.git" }
 ```rust
 use acmd::acmd;
 
-acmd!(lua_state, {
+acmd!({
     frame(16)
     AttackModule::clear_all() // clear all previous hitboxes
     if(is_execute) {
