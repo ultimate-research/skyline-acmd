@@ -114,11 +114,11 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
         let path = path.path;
         if path.is_ident("is_execute") || path.is_ident("is_excute") {
             return quote!(
-                let last_excute_frame = globals[#LAST_FRAME_GLOBAL].try_get_num().unwrap_or(0.0);
+                let last_excute_frame = globals[#LAST_FRAME_GLOBAL].try_get_num().unwrap_or(-1.0);
                 if last_excute_frame > current_frame {
-                    globals[#LAST_FRAME_GLOBAL] = 0.0.into();
+                    globals[#LAST_FRAME_GLOBAL] = (-1.0).into();
                 }
-                let #path = current_frame >= target_frame && last_excute_frame < target_frame;
+                let #path = current_frame >= target_frame && (last_excute_frame < target_frame || current_frame == 1.0);
                 if #path {
                     globals[#LAST_FRAME_GLOBAL] = target_frame.into();
                 }
@@ -315,7 +315,7 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             let l2c_agent = &mut ::smash::lib::L2CAgent::new(#l2c_state);
             let lua_state = #l2c_state;
             let module_accessor = ::smash::app::sv_system::battle_object_module_accessor(lua_state);
-            let mut target_frame = 0.0;
+            let mut target_frame = 1.0;
             let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 1.0;
             let globals = fighter.globals_mut();
         )
