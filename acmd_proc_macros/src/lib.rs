@@ -70,6 +70,20 @@ fn single_acmd_func(func_call: &AcmdFuncCall) -> TokenStream2 {
         // ACMD functions
         let func_name = &func_call.name;
         let args = func_call.args.iter().map(|arg| arg.expr.clone());
+
+        if func_name.to_token_stream().to_string() == "FT_MOTION_RATE" {
+            return quote!(
+                if current_frame >= target_frame {
+                    ::smash::app::lua_bind::MotionModule::set_rate(
+                        module_accessor,
+                        #(
+                            (1.0 / #args as f32).into()
+                        ),*
+                    );
+                }
+            );
+        }
+
         quote!(
             l2c_agent.clear_lua_stack();
             #(
