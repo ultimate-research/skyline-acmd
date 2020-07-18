@@ -151,23 +151,32 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
         let path = path.path;
         if path.is_ident("is_execute") || path.is_ident("is_excute") {
             return quote!(
+                // default last executed frame is negative, i.e. first assume that we will run the block
                 let mut last_excute_frame = -1.0;
+                
+                // call_coroutine is called on true frame 1, and we pass in a null L2CValue for its table
                 let frame_1_only = match globals.val_type {
                     smash::lib::L2CValueType::Table => false,
                     _ => true
                 };
-                if frame_1_only {
-                    last_excute_frame = -1.0;
-                } else {
+                
+                // normally, keep track of the last frame we executed in global table
+                if !frame_1_only {
                     last_excute_frame = globals[#LAST_FRAME_GLOBAL].try_get_num().unwrap_or(-1.0);
                     if last_excute_frame > current_frame {
                         globals[#LAST_FRAME_GLOBAL] = (-1.0).into();
                     }
                 }
+                
+                // if we passed the frame timer in question AND the last frame we executed was before this
                 let mut #path = current_frame >= target_frame && last_excute_frame < target_frame;
+                
+                // never execute frame 1 blocks for 
                 if !frame_1_only {
                     #path = #path && target_frame != 1.0;
                 }
+                
+                // if we're executing, store last frame executed in global table
                 if #path {
                     if !frame_1_only {
                         globals[#LAST_FRAME_GLOBAL] = target_frame.into();
