@@ -83,6 +83,29 @@ fn single_acmd_func(func_call: &AcmdFuncCall) -> TokenStream2 {
                 }
             );
         }
+        else if func_name.to_token_stream().to_string() == "game_CaptureCutCommon" {
+            return quote!(
+                if current_frame >= target_frame {
+                    l2c_agent.clear_lua_stack();
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(*::smash::lib::lua_const::FIGHTER_ATTACK_ABSOLUTE_KIND_CATCH as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(0 as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_num(3.0));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(100 as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(0 as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(60 as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_num(0.0));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_num(1.0));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(*::smash::lib::lua_const::ATTACK_LR_CHECK_F as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_num(0.0));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_bool(true));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(::smash::hash40("collision_attr_normal")));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(*::smash::lib::lua_const::ATTACK_SOUND_LEVEL_S as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(*::smash::lib::lua_const::COLLISION_SOUND_ATTR_KICK as u64));
+                    l2c_agent.push_lua_stack(&mut ::smash::lib::L2CValue::new_int(*::smash::lib::lua_const::ATTACK_REGION_NONE as u64));
+                    ::smash::app::sv_animcmd::ATTACK_ABS(lua_state);
+                }
+            );
+        }
 
         quote!(
             l2c_agent.clear_lua_stack();
