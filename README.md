@@ -27,7 +27,6 @@ use acmd::acmd;
 
 acmd!({
     frame(16)
-    AttackModule::clear_all() // clear all previous hitboxes
     if(is_execute) {
         ATTACK(
             ID=0, Part=0, Bone=hash40("arml"), 19.0, 361, 80, 0, 30, 113.0, 3.2, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
