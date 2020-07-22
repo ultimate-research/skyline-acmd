@@ -162,9 +162,9 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
                 
                 // normally, keep track of the last frame we executed in global table
                 if !frame_1_only {
-                    last_excute_frame = globals[#LAST_FRAME_GLOBAL].try_get_num().unwrap_or(-1.0);
+                    last_excute_frame = globals[last_frame_global].try_get_num().unwrap_or(-1.0);
                     if last_excute_frame > current_frame {
-                        globals[#LAST_FRAME_GLOBAL] = (-1.0).into();
+                        globals[last_frame_global] = (-1.0).into();
                     }
                 }
                 
@@ -179,7 +179,7 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
                 // if we're executing, store last frame executed in global table
                 if #path {
                     if !frame_1_only {
-                        globals[#LAST_FRAME_GLOBAL] = target_frame.into();
+                        globals[last_frame_global] = target_frame.into();
                     }
                 }
 
@@ -496,8 +496,25 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let _animation = attrs.animation.unwrap();
     let _animcmd = attrs.animcmd.unwrap();
 
+    let animcmd_str = _animcmd
+        .to_token_stream()
+        .to_string();
+
+    let animcmd_split = animcmd_str
+        .split("_")
+        .collect::<Vec<&str>>();
+
+    let last_frame_global_str = match animcmd_split.first() {
+        Some(str) => format!("{}_{}", &str[1..], LAST_FRAME_GLOBAL), // remove quote
+        None => LAST_FRAME_GLOBAL.to_string()
+    };
+
     let _orig_fn = mod_fn.block.to_token_stream();
     let _orig_fn_name = &mod_fn.sig.ident;
+
+    let last_frame_global_defn: Stmt = parse_quote! {
+        let last_frame_global = #last_frame_global_str;
+    };
 
     let lua_state_defn: Stmt = parse_quote! {
         let lua_state = fighter.lua_state_agent;
@@ -524,6 +541,7 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     mod_fn.block.stmts.clear();
+    mod_fn.block.stmts.push(last_frame_global_defn);
     mod_fn.block.stmts.push(lua_state_defn);
     mod_fn.block.stmts.push(module_accessor_defn);
     mod_fn.block.stmts.push(conditional_wrap);
