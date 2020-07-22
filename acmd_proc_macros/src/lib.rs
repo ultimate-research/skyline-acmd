@@ -526,8 +526,8 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
 
     let conditional_wrap: Stmt = parse_quote! {
         unsafe {
-            if smash::app::utility::get_category(module_accessor) == #_category 
-                && smash::app::utility::get_kind(module_accessor) == #_kind {
+            if smash::app::utility::get_category(module_accessor) == #_category
+                && (smash::app::utility::get_kind(module_accessor) == #_kind || *#_kind == *smash::lib::lua_const::FIGHTER_KIND_ALL) {
                 if smash::app::lua_bind::MotionModule::motion_kind(module_accessor) == smash::hash40(#_animation) {
                     use ::acmd::acmd;
                     ::acmd::acmd!(lua_state, {
@@ -560,7 +560,7 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
             return 
                 hash.hash == smash::hash40(#_animcmd) &&
                 smash::app::utility::get_category(module_accessor) == #_category &&
-                smash::app::utility::get_kind(module_accessor) == #_kind;
+                (smash::app::utility::get_kind(module_accessor) == #_kind || *#_kind == *smash::lib::lua_const::FIGHTER_KIND_ALL);
         }
     ).to_tokens(&mut output);
 
