@@ -151,36 +151,14 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
         let path = path.path;
         if path.is_ident("is_execute") || path.is_ident("is_excute") {
             return quote!(
-                // default last executed frame is negative, i.e. first assume that we will run the block
-                let mut last_excute_frame = -1.0;
-                
-                // call_coroutine is called on true frame 1, and we pass in a null L2CValue for its table
-                let frame_1_only = match globals.val_type {
-                    smash::lib::L2CValueType::Table => false,
-                    _ => true
-                };
-                
-                // normally, keep track of the last frame we executed in global table
-                if !frame_1_only {
-                    last_excute_frame = globals[last_frame_global].try_get_num().unwrap_or(-1.0);
-                    if last_excute_frame > current_frame {
-                        globals[last_frame_global] = (-1.0).into();
-                    }
+                if last_excute_frame > current_frame || true_frame_1 {
+                    last_excute_frame = -1.0;
                 }
-                
-                // if we passed the frame timer in question AND the last frame we executed was before this
-                let mut #path = current_frame >= target_frame && last_excute_frame < target_frame;
-                
-                // never execute frame 1 blocks for 
-                if !frame_1_only {
-                    #path = #path && target_frame != 1.0;
-                }
-                
-                // if we're executing, store last frame executed in global table
+
+                let #path = current_frame >= target_frame && last_excute_frame < target_frame;
+
                 if #path {
-                    if !frame_1_only {
-                        globals[last_frame_global] = target_frame.into();
-                    }
+                    last_excute_frame = target_frame;
                 }
 
             ).into();
@@ -188,7 +166,7 @@ pub fn generate_acmd_is_execute(input: TokenStream) -> TokenStream {
     }
 
     quote!(
-        
+
     ).into()
 }
 
@@ -376,8 +354,20 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             let lua_state = #l2c_state;
             let module_accessor = ::smash::app::sv_system::battle_object_module_accessor(lua_state);
             let mut target_frame = 1.0;
-            let current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 2.0;
+            let mut current_frame = ::smash::app::lua_bind::MotionModule::frame(module_accessor) + 2.0;
             let globals = fighter.globals_mut();
+            static mut last_excute_frame: f32 = -1.0;
+
+            // MotionModule::frame(module_accessor) returns 0.0 the first 2 frames
+            let true_frame_1 = match globals.val_type {
+                smash::lib::L2CValueType::Table => {
+                    false
+                }
+                _ => {
+                    current_frame = 1.0;
+                    true
+                }
+            };
         )
     });
 
@@ -420,25 +410,25 @@ impl Parse for AcmdAttrs {
         let look = input.lookahead1();
         let attr = if look.peek(kw::battle_object_category) {
             let MetaItem::<kw::battle_object_category, syn::Path> { item: cat, .. } = input.parse()?;
-            
+
             let mut a = AcmdAttrs::default();
             a.battle_object_category = Some(cat);
             a
         } else if look.peek(kw::battle_object_kind) {
             let MetaItem::<kw::battle_object_kind, syn::Path> { item: kind, .. } = input.parse()?;
-            
+
             let mut a = AcmdAttrs::default();
             a.battle_object_kind = Some(kind);
             a
         } else if look.peek(kw::animation) {
             let MetaItem::<kw::animation, syn::LitStr> { item: anim, .. } = input.parse()?;
-            
+
             let mut a = AcmdAttrs::default();
             a.animation = Some(anim);
             a
         } else if look.peek(kw::animcmd) {
             let MetaItem::<kw::animcmd, syn::LitStr> { item: animcmd, .. } = input.parse()?;
-            
+
             let mut a = AcmdAttrs::default();
             a.animcmd = Some(animcmd);
             a
@@ -521,7 +511,7 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     let module_accessor_defn: Stmt = parse_quote! {
-        let module_accessor = unsafe { smash::app::sv_system::battle_object_module_accessor(lua_state) }; 
+        let module_accessor = unsafe { smash::app::sv_system::battle_object_module_accessor(lua_state) };
     };
 
     let conditional_wrap: Stmt = parse_quote! {
@@ -553,11 +543,11 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
         mod_fn.sig.ident
     );
 
-    quote!(        
+    quote!(
         #[allow(non_upper_case_globals)]
         pub unsafe fn #_pred_fn(agent: &mut smash::lua2cpp::L2CAgentBase, hash: smash::phx::Hash40) -> bool {
             let module_accessor = smash::app::sv_system::battle_object_module_accessor(agent.lua_state_agent);
-            return 
+            return
                 hash.hash == smash::hash40(#_animcmd) &&
                 smash::app::utility::get_category(module_accessor) == #_category &&
                 (smash::app::utility::get_kind(module_accessor) == #_kind || *#_kind == *smash::lib::lua_const::FIGHTER_KIND_ALL);
@@ -570,14 +560,14 @@ pub fn acmd_func(attrs: TokenStream, input: TokenStream) -> TokenStream {
     );
 
     if _category.to_token_stream().to_string() == "BATTLE_OBJECT_CATEGORY_FIGHTER" {
-        quote!(        
+        quote!(
             #[allow(non_upper_case_globals)]
             pub unsafe fn #_add_hook_fn() {
                 acmd::add_acmd_load_hook(#_orig_fn_name, #_pred_fn);
             }
         ).to_tokens(&mut output);
     } else {
-        quote!(        
+        quote!(
             #[allow(non_upper_case_globals)]
             pub unsafe fn #_add_hook_fn()  {
                 acmd::add_acmd_load_weapon_hook(#_orig_fn_name, #_pred_fn);
