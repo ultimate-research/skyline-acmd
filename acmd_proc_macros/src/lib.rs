@@ -358,7 +358,13 @@ pub fn acmd(input: TokenStream) -> TokenStream {
             let globals = fighter.globals_mut();
             static mut last_excute_frame: f32 = -1.0;
 
-            // MotionModule::frame(module_accessor) returns 0.0 the first 2 frames
+            /*
+             * MotionModule::frame(module_accessor) returns 0.0 the first 2 frames, and
+             * call_coroutine passes a null L2CValue for true frame 1.
+             *
+             * In this way, we can detect which frame 1 is the "true" frame 1 and
+             * update the current_frame offset from MotionModule::frame(module_accessor).
+             */
             let true_frame_1 = match globals.val_type {
                 smash::lib::L2CValueType::Table => {
                     false
