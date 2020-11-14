@@ -211,18 +211,31 @@ struct AcmdIf {
     pub if_token: Token![if],
     pub parens: syn::token::Paren,
     pub cond: Expr,
-    pub block: AcmdBlock
+    pub block: AcmdBlock,
+    pub else_token: Option<Token![else]>,
+    pub else_block: Option<AcmdBlock>,
 }
 
 impl Parse for AcmdIf {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let content;
-        Ok(Self {
+        let mut acmd_if = Self {
             if_token: input.parse()?,
             parens: syn::parenthesized!(content in input),
             cond: content.parse()?,
-            block: input.parse()?
-        })
+            block: input.parse()?,
+            else_token: None,
+            else_block: None
+        };
+
+        let lookahead = input.lookahead1();
+
+        if lookahead.peek(Token![else]) {
+            acmd_if.else_token = Some(input.parse()?);
+            acmd_if.else_block = Some(input.parse()?);
+        }
+
+        Ok(acmd_if)
     }
 }
 
@@ -287,12 +300,17 @@ impl ToTokens for AcmdStatement {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         let new_tokens = match self {
             Self::If(acmd_if) => {
+                let default_block = AcmdBlock { braces: syn::token::Brace::default(), statements: Vec::with_capacity(0) };
                 let cond = &acmd_if.cond;
                 let acmd_block = &acmd_if.block;
+                let else_block = &acmd_if.else_block.as_ref().unwrap_or(&default_block);
                 quote!(
                     ::acmd::generate_acmd_is_execute!(#cond);
                     if #cond {
                         #acmd_block
+                    }
+                    else {
+                        #else_block
                     }
                 )
             }
