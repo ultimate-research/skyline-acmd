@@ -13,5 +13,5 @@ plugin-dependencies = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-skyline_smash = { git = "https://github.com/ultimate-research/skyline-smash.git" }
+skyline_smash = { git = "https://github.com/ultimate-research/skyline-smash.git", features = ["weak_l2cvalue"] }
 acmd_proc_macros = { path = "acmd_proc_macros" }
